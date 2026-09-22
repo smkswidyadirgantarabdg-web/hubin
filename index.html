@@ -159,7 +159,7 @@ th{color:#637da7;background:#f8fbff}
    https://script.google.com/macros/s/XXXXXXXX/exec
    ========================================================= */
 const HUBIN_CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbyTeGD3n6Fxdvw80RYdcHPbKf5ERSfm5RoqCRE4EmnmGPQ_2R_tWV7O89NPRm2lYXx_pA/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbxrvgIAUJ4ISGHULjEcP8m7P1KDXHH8hBh9Y5vaiP8qlE-S6NeF-tgaalEyhtmGETX5nA/exec",
   SCHOOL_NAME: "SMK WIDYA DIRGANTARA",
   SESSION_KEY: "hubin_session_v2",
   CACHE_TTL_MS: 5 * 60 * 1000
@@ -446,7 +446,7 @@ const HUBIN_CONFIG = {
           <h3>Pengguna Sistem</h3>
           <div class="actions"><button class="btn primary" id="addUser">＋ Tambah Pengguna</button><button class="btn" id="refreshUser">↻ Refresh</button></div>
         </div>
-        <div class="note">Password pengguna disimpan dalam bentuk hash. Untuk keamanan, password tidak ditampilkan pada tabel.</div>
+        <div class="note">Password pengguna disimpan sebagai plaintext. Password tidak ditampilkan pada tabel.</div>
         <div class="table-wrap" style="margin-top:14px">
           <table><thead><tr><th>Username</th><th>Nama</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
@@ -501,8 +501,8 @@ const HUBIN_CONFIG = {
       };
       const password=String(fd.get("Password")||"");
       // Jangan menimpa password lama saat edit jika field kosong.
-      if(password)obj.PasswordHash=password;
-      else if(row.PasswordHash)obj.PasswordHash=row.PasswordHash;
+      if(password)obj.Password=password;
+      else if(row.Password)obj.Password=row.Password;
 
       try{
         await api("save",{table:"pengguna",row:obj});
