@@ -159,7 +159,7 @@ th{color:#637da7;background:#f8fbff}
    https://script.google.com/macros/s/XXXXXXXX/exec
    ========================================================= */
 const HUBIN_CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbwgvl3ZWOqG_gPx6e5G649lgxb_TIHAtm4xArOCtgd7BwBWLsz7rtsP9pDn-pcLPPWlNQ/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbyTeGD3n6Fxdvw80RYdcHPbKf5ERSfm5RoqCRE4EmnmGPQ_2R_tWV7O89NPRm2lYXx_pA/exec",
   SCHOOL_NAME: "SMK WIDYA DIRGANTARA",
   SESSION_KEY: "hubin_session_v2",
   CACHE_TTL_MS: 5 * 60 * 1000
@@ -239,6 +239,7 @@ const HUBIN_CONFIG = {
       iframe.name=requestId;
       iframe.style.cssText="display:none;width:0;height:0;border:0";
       document.body.appendChild(iframe);
+      iframe.onerror=()=>finish(reject,new Error("Gagal membuka koneksi ke Web App GAS."));
 
       const form=document.createElement("form");
       form.method="POST";
@@ -275,7 +276,10 @@ const HUBIN_CONFIG = {
       };
 
       const onMessage=(e)=>{
-        const d=e.data;
+        // Respons GAS bisa melewati satu atau lebih iframe Google sebelum
+        // sampai ke halaman GitHub. Karena requestId unik, cukup validasi
+        // identitas respons tanpa bergantung pada origin Google.
+        const d=e && e.data;
         if(!d || d.hubinName!==requestId)return;
         const result=d.result||{};
         if(result.ok){
@@ -289,7 +293,7 @@ const HUBIN_CONFIG = {
       };
 
       window.addEventListener("message",onMessage);
-      const timer=setTimeout(()=>finish(reject,new Error("Server timeout. Periksa URL GAS dan deployment Web App.")),30000);
+      const timer=setTimeout(()=>finish(reject,new Error("Server timeout. Periksa URL GAS dan deployment Web App.")),45000);
 
       try{
         form.submit();
