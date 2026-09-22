@@ -92,6 +92,8 @@ th{color:#637da7;background:#f8fbff}
  .login-card{padding:27px 18px}.login-card h1{font-size:28px}.cards{grid-template-columns:1fr 1fr}
  .form-grid{grid-template-columns:1fr}.hero-icon{display:none}.topbar h2{font-size:18px}
 }
+
+.student-hero{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-bottom:18px}.student-card{background:#fff;border:1px solid #e1e9f4;border-radius:18px;padding:20px}.student-actions{display:flex;gap:10px;flex-wrap:wrap}.student-actions .btn{min-width:145px}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#edf6ff;color:#2356a4;font-size:12px;font-weight:700}.danger-text{color:#b42318}@media(max-width:800px){.student-hero{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -159,7 +161,7 @@ th{color:#637da7;background:#f8fbff}
    https://script.google.com/macros/s/XXXXXXXX/exec
    ========================================================= */
 const HUBIN_CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbxrvgIAUJ4ISGHULjEcP8m7P1KDXHH8hBh9Y5vaiP8qlE-S6NeF-tgaalEyhtmGETX5nA/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbw0FndkGlGX6uhthhaCtFmXHj-q0vegefRhRTRWxfANC7tDbc50zfwz6EkxO2ilZFhDjg/exec",
   SCHOOL_NAME: "SMK WIDYA DIRGANTARA",
   SESSION_KEY: "hubin_session_v2",
   CACHE_TTL_MS: 5 * 60 * 1000
@@ -170,12 +172,15 @@ const HUBIN_CONFIG = {
   const $ = s => document.querySelector(s);
   const state = { user:null, page:"dashboard", cache:new Map() };
 
-  const NAV = [
+  const NAV_ADMIN = [
     {g:"Utama",i:[["dashboard","📊","Dashboard"]]},
-    {g:"Prakerin / PKL",i:[["prakerin","🎓","Data Prakerin"],["monitoring","📝","Monitoring Daring"],["jurnal","📒","Jurnal Siswa"]]},
+    {g:"Prakerin / PKL",i:[["prakerin","🎓","Data Prakerin"],["akun_siswa","👨‍🎓","Akun Siswa"],["absensi_prakerin","🗓️","Absensi Siswa"],["monitoring","📝","Monitoring Daring"],["jurnal","📒","Jurnal Siswa"]]},
     {g:"Hubungan Industri",i:[["dudi","🏢","Dunia Industri"],["kunjungan","🚐","Kunjungan Industri"],["mou","🤝","Kerja Sama / MoU"]]},
     {g:"BKK & Alumni",i:[["bkk","💼","Bursa Kerja Khusus"],["tracer","🔎","Penelusuran Lulusan"]]},
     {g:"Sistem",i:[["pengguna","👥","Pengguna"],["log","🛡️","Log Aktivitas"]]}
+  ];
+  const NAV_SISWA = [
+    {g:"Portal Siswa",i:[["student_portal","🏠","Beranda Saya"]]}
   ];
 
   function toast(t){
@@ -305,7 +310,8 @@ const HUBIN_CONFIG = {
 
   function renderNav(){
     let html="";
-    NAV.forEach(g=>{
+    const nav=String(state.user?.role||'').toLowerCase()==='siswa'?NAV_SISWA:NAV_ADMIN;
+    nav.forEach(g=>{
       html+=`<div class="nav-group">${g.g}</div>`;
       g.i.forEach(([id,ic,n])=>{
         html+=`<button class="nav-item ${state.page===id?"active":""}" data-page="${id}"><span>${ic}</span>${n}</button>`;
@@ -323,6 +329,8 @@ const HUBIN_CONFIG = {
   }
 
   function showApp(){
+    if(String(state.user?.role||'').toLowerCase()==='siswa') state.page="student_portal";
+    else if(state.page==="student_portal") state.page="dashboard";
     $("#loginView").classList.add("hidden");
     $("#appView").classList.remove("hidden");
     $("#userName").textContent=state.user?.name||state.user?.username||"Pengguna";
@@ -333,7 +341,7 @@ const HUBIN_CONFIG = {
   }
 
   function titleFor(p){
-    const all=NAV.flatMap(g=>g.i);
+    const all=(String(state.user?.role||'').toLowerCase()==='siswa'?NAV_SISWA:NAV_ADMIN).flatMap(g=>g.i);
     return all.find(x=>x[0]===p)?.[2]||"Dashboard";
   }
 
@@ -352,6 +360,7 @@ const HUBIN_CONFIG = {
   }
 
   const pages={
+    student_portal:()=>studentPortalPage(),
     dashboard:async()=>{
       const d=await api("dashboard",{},true);
       $("#content").innerHTML=`
@@ -363,6 +372,8 @@ const HUBIN_CONFIG = {
         <div class="cards">
           ${[
             ["Siswa Prakerin",d.prakerin||0],
+            ["Absensi PKL",d.absensi_prakerin||0],
+            ["Akun Siswa",d.akun_siswa||0],
             ["Mitra DUDI",d.dudi||0],
             ["Kunjungan",d.kunjungan||0],
             ["Lulusan",d.lulusan||0]
@@ -380,6 +391,8 @@ const HUBIN_CONFIG = {
     },
 
     prakerin:()=>crudPage("prakerin","Data Prakerin",["Siswa","NIS","Kelas","DUDI","Pembimbing","Mulai","Selesai","Status","Catatan"]),
+    akun_siswa:()=>akunSiswaPage(),
+    absensi_prakerin:()=>absensiPrakerinPage(),
     monitoring:()=>crudPage("monitoring","Monitoring Prakerin",["Tanggal","Siswa","Pembimbing","Status","Catatan"]),
     jurnal:()=>crudPage("jurnal","Jurnal Kegiatan Siswa",["Tanggal","Siswa","Kegiatan","Validasi","Catatan"]),
     dudi:()=>crudPage("dudi","Dunia Industri / Mitra",["Nama Perusahaan","Bidang","PIC","Telepon","Email","Alamat","Status"]),
@@ -435,6 +448,206 @@ const HUBIN_CONFIG = {
         }catch(e){toast(e.message)}
       };
     });
+  }
+
+  async function studentPortalPage(){
+    const d=await api("studentPortal",{},false);
+    const p=d.prakerin||{};
+    const today=new Date().toISOString().slice(0,10);
+    const todayRows=(d.absensi||[]).filter(x=>String(x.Tanggal||'').slice(0,10)===today);
+    const todayAbs=todayRows[0]||null;
+    const absLabel=!todayAbs?"✓ Absen Masuk":(!todayAbs["Jam Pulang"]?"✓ Absen Pulang":"Absensi Hari Ini Lengkap");
+    const disabled=!!todayAbs&&!!todayAbs["Jam Pulang"];
+    const journals=d.jurnal||[];
+    $("#content").innerHTML=`
+      <div class="student-hero">
+        <div class="student-card">
+          <span class="badge">PORTAL SISWA</span>
+          <h2 style="margin:10px 0 4px">Halo, ${esc(state.user?.name||'Siswa')}</h2>
+          <p class="muted">Gunakan portal ini untuk absensi PKL dan mengisi jurnal kegiatan.</p>
+          <div class="student-actions"><button class="btn primary" id="absenBtn" ${disabled?'disabled':''}>${absLabel}</button><button class="btn" id="refreshStudent">↻ Refresh</button></div>
+          ${todayAbs?`<p class="note" style="margin-top:14px">Hari ini: <b>${esc(todayAbs.Status||'Hadir')}</b> • Masuk: <b>${esc(todayAbs['Jam Masuk']||'-')}</b> • Pulang: <b>${esc(todayAbs['Jam Pulang']||'-')}</b></p>`:''}
+        </div>
+        <div class="student-card"><h3>Data Prakerin</h3>
+          <p><b>NIS</b><br>${esc(state.user?.nis||'-')}</p>
+          <p><b>Kelas</b><br>${esc(p.Kelas||'-')}</p>
+          <p><b>DUDI</b><br>${esc(p.DUDI||'-')}</p>
+          <p><b>Periode</b><br>${esc(p.Mulai||'-')} s/d ${esc(p.Selesai||'-')}</p>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="student-card"><div class="section-head"><h3>Jurnal Kegiatan</h3></div>
+          <form id="studentJurnalForm" class="form-grid">
+            <div class="form-group"><label>Tanggal</label><input type="date" name="tanggal" value="${today}" required></div>
+            <div class="form-group full"><label>Kegiatan</label><textarea name="kegiatan" placeholder="Tuliskan kegiatan Prakerin hari ini..." required></textarea></div>
+            <div class="form-group full"><button class="btn primary" type="submit">Simpan Jurnal</button></div>
+          </form>
+        </div>
+        <div class="student-card"><div class="section-head"><h3>Riwayat Jurnal</h3></div>
+          <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Validasi</th></tr></thead><tbody>
+          ${journals.map(r=>`<tr><td>${esc(r.Tanggal||'')}</td><td>${esc(r.Kegiatan||'')}</td><td>${esc(r.Validasi||'Belum')}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Belum ada jurnal.</td></tr>'}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="student-card" style="margin-top:18px"><div class="section-head"><h3>Riwayat Absensi</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Status</th><th>Masuk</th><th>Pulang</th><th>Keterangan</th></tr></thead><tbody>
+        ${(d.absensi||[]).map(r=>`<tr><td>${esc(r.Tanggal||'')}</td><td>${esc(r.Status||'')}</td><td>${esc(r['Jam Masuk']||'-')}</td><td>${esc(r['Jam Pulang']||'-')}</td><td>${esc(r.Keterangan||'')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada absensi.</td></tr>'}
+        </tbody></table></div>
+      </div>`;
+    $("#refreshStudent").onclick=()=>{state.cache.clear();renderPage()};
+    $("#absenBtn").onclick=async()=>{try{await api("studentAbsensi",{});toast("Absensi berhasil dicatat.");renderPage()}catch(e){toast(e.message)}};
+    $("#studentJurnalForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api("studentJurnal",{tanggal:f.get('tanggal'),kegiatan:f.get('kegiatan')});toast("Jurnal berhasil disimpan.");renderPage()}catch(err){toast(err.message)}};
+  }
+
+  async function akunSiswaPage(){
+    const [akunData,pklData]=await Promise.all([api("list",{table:"akun_siswa"},true),api("list",{table:"prakerin"},true)]);
+    const rows=akunData?.rows||[], siswa=pklData?.rows||[];
+    $("#content").innerHTML=`<div class="section"><div class="section-head"><div><h3>Akun Siswa</h3><p class="muted">Buat akun login siswa berdasarkan data Prakerin/PKL.</p></div><div class="actions"><button class="btn primary" id="addAkun">＋ Tambah Akun</button><button class="btn" id="refreshAkun">↻ Refresh</button></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Username</th><th>NIS</th><th>Siswa</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${esc(r.Username||'')}</td><td>${esc(r.NIS||'')}</td><td>${esc(r.Siswa||'')}</td><td>${esc(r.Status||'')}</td><td><button class="btn" data-aedit="${esc(JSON.stringify(r))}">Edit</button> <button class="btn danger" data-adel="${esc(r._id)}">Hapus</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada akun siswa.</td></tr>'}</tbody></table></div></div>`;
+    $("#refreshAkun").onclick=()=>{state.cache.clear();renderPage()};
+    $("#addAkun").onclick=()=>openAkunForm({},siswa);
+    document.querySelectorAll('[data-aedit]').forEach(b=>b.onclick=()=>openAkunForm(JSON.parse(b.getAttribute('data-aedit')),siswa));
+    document.querySelectorAll('[data-adel]').forEach(b=>b.onclick=async()=>{if(!confirm('Hapus akun siswa ini?'))return;try{await api('delete',{table:'akun_siswa',id:b.dataset.adel});state.cache.clear();toast('Akun dihapus.');renderPage()}catch(e){toast(e.message)}});
+  }
+
+  function openAkunForm(row,siswa){
+    const opts=siswa.map(x=>`<option value="${esc(x.NIS||'')}" data-name="${esc(x.Siswa||'')}" ${String(x.NIS||'')===String(row.NIS||'')?'selected':''}>${esc(x.Siswa||'')} — ${esc(x.NIS||'')}</option>`).join('');
+    $("#content").innerHTML=`<div class="section"><div class="section-head"><h3>${row._id?'Edit':'Buat'} Akun Siswa</h3><button class="btn" id="backAkun">← Kembali</button></div><form id="akunForm" class="form-grid">
+      <div class="form-group full"><label>Siswa Prakerin</label><select name="NIS" id="akunNIS" required><option value="">Pilih siswa…</option>${opts}</select></div>
+      <div class="form-group"><label>Username</label><input name="Username" value="${esc(row.Username||'')}" required></div>
+      <div class="form-group"><label>Password</label><input name="Password" value="${esc(row.Password||'')}" required></div>
+      <div class="form-group"><label>Status</label><select name="Status"><option ${row.Status==='Aktif'||!row.Status?'selected':''}>Aktif</option><option ${row.Status==='Nonaktif'?'selected':''}>Nonaktif</option></select></div>
+      <div class="form-group full"><button class="btn primary" type="submit">Simpan Akun</button></div></form></div>`;
+    $("#backAkun").onclick=renderPage;
+    $("#akunForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const opt=$("#akunNIS").selectedOptions[0];const obj={Username:f.get('Username'),Password:f.get('Password'),NIS:f.get('NIS'),Siswa:opt?.dataset.name||'',Status:f.get('Status')};if(row._id)obj._id=row._id;try{await api('save',{table:'akun_siswa',row:obj});state.cache.clear();toast('Akun siswa berhasil disimpan.');renderPage()}catch(err){toast(err.message)}};
+  }
+
+  async function absensiPrakerinPage(){
+    const [absensiData, prakerinData]=await Promise.all([
+      api("list",{table:"absensi_prakerin"},true),
+      api("list",{table:"prakerin"},true)
+    ]);
+    const rows=absensiData?.rows||[];
+    const siswa=prakerinData?.rows||[];
+
+    rows.sort((a,b)=>String(b.Tanggal||"").localeCompare(String(a.Tanggal||"")));
+
+    const statusClass=s=>{
+      const v=String(s||"").toLowerCase();
+      if(v==="hadir")return "badge ok";
+      if(v==="izin"||v==="sakit")return "badge warn";
+      if(v==="alpa")return "badge danger";
+      return "badge";
+    };
+
+    const siswaAktif=siswa.filter(r=>{
+      const st=String(r.Status||"").toLowerCase();
+      return !st || st==="aktif" || st==="berjalan";
+    });
+
+    const studentOptions=(selected)=>{
+      const list=siswaAktif.slice();
+      if(selected && !list.some(r=>String(r.Siswa)===String(selected))){
+        list.unshift({Siswa:selected,NIS:"",Kelas:"",DUDI:""});
+      }
+      return '<option value="">Pilih siswa…</option>'+list.map(r=>
+        `<option value="${esc(r.Siswa||"")}" data-nis="${esc(r.NIS||"")}" data-kelas="${esc(r.Kelas||"")}" data-dudi="${esc(r.DUDI||"")}" ${String(r.Siswa||"")===String(selected||"")?"selected":""}>${esc(r.Siswa||"")}${r.NIS?" — "+esc(r.NIS):""}</option>`
+      ).join("");
+    };
+
+    window.__hubinAbsensiStudentOptions=studentOptions;
+
+    const statusBadge=(v)=>`<span class="${statusClass(v)}">${esc(v||"-")}</span>`;
+
+    // Tabel sengaja ringkas agar nyaman dipakai di HP.
+    $("#content").innerHTML=`
+      <div class="section">
+        <div class="section-head">
+          <div><h3>Absensi Siswa Prakerin</h3><p class="muted">Catat kehadiran siswa selama menjalani Prakerin/PKL.</p></div>
+          <div class="actions"><button class="btn primary" id="addAbsensi">＋ Absen Siswa</button><button class="btn" id="refreshAbsensi">↻ Refresh</button></div>
+        </div>
+        <div class="note">Daftar siswa pada form diambil dari <b>Data Prakerin</b>. Jurnal tetap digunakan untuk mencatat kegiatan, sedangkan modul ini khusus kehadiran.</div>
+        <div class="table-wrap" style="margin-top:14px">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Siswa</th><th>NIS</th><th>DUDI</th><th>Status</th><th>Jam Masuk</th><th>Jam Pulang</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+            <tbody>
+              ${rows.map(r=>`<tr>
+                <td>${fmtDate(r.Tanggal)}</td><td>${esc(r.Siswa)}</td><td>${esc(r.NIS)}</td><td>${esc(r.DUDI)}</td>
+                <td>${statusBadge(r.Status)}</td><td>${esc(r["Jam Masuk"]||"")}</td><td>${esc(r["Jam Pulang"]||"")}</td><td>${esc(r.Keterangan||"")}</td>
+                <td><button class="btn" data-absensi-edit="${esc(JSON.stringify(r))}">Edit</button> <button class="btn danger" data-absensi-delete="${esc(r._id)}">Hapus</button></td>
+              </tr>`).join("") || '<tr><td colspan="9" class="empty">Belum ada absensi siswa.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+    $("#addAbsensi").onclick=()=>openAbsensiForm({},siswaAktif);
+    $("#refreshAbsensi").onclick=()=>{state.cache.clear();renderPage()};
+    document.querySelectorAll("[data-absensi-edit]").forEach(btn=>btn.onclick=()=>{
+      openAbsensiForm(JSON.parse(btn.getAttribute("data-absensi-edit")),siswaAktif);
+    });
+    document.querySelectorAll("[data-absensi-delete]").forEach(btn=>btn.onclick=async()=>{
+      if(!confirm("Hapus data absensi ini?"))return;
+      try{
+        await api("delete",{table:"absensi_prakerin",id:btn.getAttribute("data-absensi-delete")});
+        state.cache.clear();toast("Absensi berhasil dihapus.");renderPage();
+      }catch(e){toast(e.message)}
+    });
+  }
+
+  function openAbsensiForm(row,siswaList){
+    const isEdit=!!row._id;
+    const options=(selected)=>{
+      const list=siswaList.slice();
+      if(selected && !list.some(r=>String(r.Siswa)===String(selected))) list.unshift({Siswa:selected,NIS:row.NIS||"",Kelas:row.Kelas||"",DUDI:row.DUDI||""});
+      return '<option value="">Pilih siswa…</option>'+list.map(r=>`<option value="${esc(r.Siswa||"")}" data-nis="${esc(r.NIS||"")}" data-kelas="${esc(r.Kelas||"")}" data-dudi="${esc(r.DUDI||"")}" ${String(r.Siswa||"")===String(selected||"")?"selected":""}>${esc(r.Siswa||"")}${r.NIS?" — "+esc(r.NIS):""}</option>`).join("");
+    };
+    const isoDate=v=>{
+      if(!v)return "";
+      const d=new Date(v);
+      if(!isNaN(d))return d.toISOString().slice(0,10);
+      return String(v).slice(0,10);
+    };
+    $("#content").innerHTML=`
+      <div class="section">
+        <div class="section-head"><h3>${isEdit?"Edit":"Tambah"} Absensi Siswa Prakerin</h3><button class="btn" id="back">← Kembali</button></div>
+        <form id="absensiForm" class="form-grid">
+          <div class="form-group"><label>Tanggal</label><input type="date" name="Tanggal" value="${esc(isoDate(row.Tanggal))}" required></div>
+          <div class="form-group"><label>Status Kehadiran</label><select name="Status" required>
+            ${["Hadir","Izin","Sakit","Alpa"].map(v=>`<option ${String(row.Status||"Hadir")===v?"selected":""}>${v}</option>`).join("")}
+          </select></div>
+          <div class="form-group full"><label>Siswa Prakerin</label><select name="Siswa" id="absensiSiswa" required>${options(row.Siswa)}</select></div>
+          <div class="form-group"><label>NIS</label><input name="NIS" id="absensiNIS" value="${esc(row.NIS||"")}" readonly></div>
+          <div class="form-group"><label>Kelas</label><input name="Kelas" id="absensiKelas" value="${esc(row.Kelas||"")}" readonly></div>
+          <div class="form-group full"><label>DUDI / Tempat Prakerin</label><input name="DUDI" id="absensiDUDI" value="${esc(row.DUDI||"")}" readonly></div>
+          <div class="form-group"><label>Jam Masuk</label><input type="time" name="Jam Masuk" value="${esc(row["Jam Masuk"]||"")}"></div>
+          <div class="form-group"><label>Jam Pulang</label><input type="time" name="Jam Pulang" value="${esc(row["Jam Pulang"]||"")}"></div>
+          <div class="form-group full"><label>Keterangan</label><textarea name="Keterangan">${esc(row.Keterangan||"")}</textarea></div>
+          <div class="form-group full"><button class="btn primary" type="submit">Simpan Absensi</button></div>
+        </form>
+      </div>`;
+
+    const select=$("#absensiSiswa");
+    const syncStudent=()=>{
+      const opt=select.options[select.selectedIndex];
+      if(!opt)return;
+      $("#absensiNIS").value=opt.dataset.nis||"";
+      $("#absensiKelas").value=opt.dataset.kelas||"";
+      $("#absensiDUDI").value=opt.dataset.dudi||"";
+    };
+    select.onchange=syncStudent;
+    if(row.Siswa)syncStudent();
+    $("#back").onclick=renderPage;
+    $("#absensiForm").onsubmit=async e=>{
+      e.preventDefault();
+      const obj=Object.fromEntries(new FormData(e.target).entries());
+      if(row._id)obj._id=row._id;
+      try{
+        await api("save",{table:"absensi_prakerin",row:obj});
+        state.cache.clear();toast("Absensi siswa berhasil disimpan.");renderPage();
+      }catch(err){toast(err.message)}
+    };
   }
 
   async function userPage(){
